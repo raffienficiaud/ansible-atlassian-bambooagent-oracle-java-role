@@ -27,17 +27,16 @@ galaxy_info:
   #
   # platforms is a list of platforms, and each platform has a name and a list of versions.
   #
-  # platforms:
-  # - name: Fedora
-  #   versions:
-  #   - all
-  #   - 25
-  # - name: SomePlatform
-  #   versions:
-  #   - all
-  #   - 1.0
-  #   - 7
-  #   - 99.99
+  platforms:
+  - name: Ubuntu
+    versions:
+     - all
+  - name: Windows
+    versions:
+     - all
+  - name: macOS
+    versions:
+     - all
 
   galaxy_tags: []
     # List tags for your role here, one per line. A tag is a keyword that describes
