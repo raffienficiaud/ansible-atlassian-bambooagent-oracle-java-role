@@ -1,0 +1,99 @@
+# Installs oracle Java on the agent
+---
+
+#
+# OSX
+#
+
+# Checks that this version exist, so that there is no need to transfer and install
+- name: '[JAVA] checking existing Java installation'
+  command: "/usr/libexec/java_home -v 1.{{ java_version_major }}"
+  register: java_checking_osx
+  ignore_errors: True
+  when: ansible_distribution=="MacOSX"
+
+# Impossible to add this into the current meta/dependencies as {{ java_installation }} is not expanded properly
+- include: ../../bamboo-agent-install-dmg/tasks/main.yml
+  dmg_to_install:
+    - "{{ java_installation }}"
+  when: ({{ (ansible_distribution=="MacOSX") and ('rc' in java_checking_osx) and (java_checking_osx.rc != 0) }} )
+
+
+# Checks that this version exist, so that there is no need to transfer and install
+- name: '[JAVA] checking existing Java installation'
+  win_command: "java -version"
+  register: java_checking_windows
+  ignore_errors: True
+  when: ansible_os_family=="Windows"
+
+- block:
+
+  - name: '[JAVA] copy and run installer'
+    win_copy:
+      src: "{{ java_installation.file }}"
+      dest: "{{ansible_env['TEMP']}}/"  
+    when: False
+
+  - name: 'Remove log file'
+    win_file:
+      path: "{{ ansible_env['TEMP'] }}/javasetup.log"
+      state: absent   
+  
+  - name: '[JAVA] installation'
+    win_command: "start /w {{java_installation.file | basename }} {{ java_installation.install_options }} /L {{ ansible_env['TEMP'] }}/javasetup.log"
+    args:
+      executable: cmd
+      chdir: "{{ ansible_env['TEMP'] }}"
+    when: False
+
+  - name: '[JAVA] check java from prompt'
+    win_command: "java -version"
+    register: java_checking_windows
+    ignore_errors: False
+  
+  # it seems harder to inspect the installation log
+  #- name: '[JAVA] home location'
+  #  win_lineinfile: 
+  
+  # can be in a separate block if we do not want to install java on some conditions
+  - name: '[JAVA] finding the installation path'
+    win_shell: "(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\JavaSoft\\Java Development Kit\\1.{{ java_version_major }}' -Name JavaHome).JavaHome"
+    register: java_home_windows_tmp
+  
+  # replacing backslashes to forward ones
+  - name: '[JAVA] finding the installation path'
+    set_fact:
+      java_home_windows: '{{ "".join(java_home_windows_tmp.stdout_lines) | replace("\\", "/") }}'
+      
+  when: ansible_os_family=="Windows"
+
+#
+# UBUNTU
+#
+
+- block:
+
+  - name: '[JAVA] create destination path'
+    file:
+      path={{ java_installation_path }}
+      state=directory
+
+  - name: '[JAVA] copy and deflate installer'
+    unarchive:
+      src="{{ java_installation.file }}"
+      dest="{{ java_installation_path }}"
+      copy=yes
+
+  - name: '[JAVA] update alternatives for java'
+    shell: update-alternatives --install "/usr/bin/{{ item }}" "{{ item }}" "{{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}" 1 && \
+             chmod a+x /usr/bin/{{ item }} && \
+             update-alternatives --set {{ item }} {{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}
+    with_items:
+      - "java"
+      - "javac"
+      - "javaws"
+
+  - name: '[JAVA] check java'
+    command: java -version
+
+  when: ansible_distribution=="Ubuntu"

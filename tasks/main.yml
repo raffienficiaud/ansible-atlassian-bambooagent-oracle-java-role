@@ -1,0 +1,16 @@
+---
+
+# This file configures the bamboo agent  
+
+- include: check_vars.yml 
+  tags:
+    - java:checks
+    - checks
+
+- include: bambooagent_install_java.yml
+  tags:
+    - java
+    
+- include: bambooagent_install_java_certificates.yml
+  tags:
+    - java

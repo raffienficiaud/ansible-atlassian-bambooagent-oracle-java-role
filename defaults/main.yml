@@ -1,0 +1,12 @@
+
+#
+# JAVA
+# Java is necessary for starting the agent
+# Below the settings for configuring Oracle version of Java.
+#
+
+# location of the final Java installation. This is just an IT preference and linux specific
+java_installation_path: /usr/local/oracle
+
+# Keystore location: this may be different whether you install the JRE or the JDK. This path is relative to JAVA_HOME
+java_keystore_location: jre/lib/security/cacerts
