@@ -48,5 +48,6 @@ galaxy_info:
   - java
   - oracle
 
-dependencies: 
-  - raffienficiaud.atlassian-bambooagent-install-dmg-role
+# This role depends on the raffienficiaud.atlassian-bambooagent-install-dmg-role, but listing it here will
+# execute it prior to running this role, which we **DO NOT** want
+dependencies: []

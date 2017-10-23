@@ -31,6 +31,10 @@
         state=absent
       with_items: "{{ certificate_files }}"
 
+#
+# Windows
+#
+
 - block:
   - name: '[JAVA] list existing certificates'
     win_shell: "bin\\keytool -list -keystore \"{{ java_home_windows }}/{{ java_keystore_location }}\" -storepass changeit"
