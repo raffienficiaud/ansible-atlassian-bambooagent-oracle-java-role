@@ -15,12 +15,12 @@
       src={{ item.file }}
       dest=/tmp/{{ item.file | basename }}
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1
+    when: item.alias not in java_certificates.stdout
 
   - name: '[JAVA] install certificates in the keystore'
     shell: keytool -import -trustcacerts -keystore `/usr/libexec/java_home`/{{ java_keystore_location }} -storepass changeit -noprompt -alias {{ item.alias }} -file "/tmp/{{ item.file | basename }}"
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1
+    when: item.alias not in java_certificates.stdout
 
   when: ansible_distribution=="MacOSX"
 
@@ -48,7 +48,7 @@
       src={{ item.file }}
       dest="{{ ansible_env['TMP'] }}/{{ item.file | basename }}"
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1
+    when: item.alias not in java_certificates.stdout
 
   - name: '[JAVA] install certificates in the keystore'
     win_shell: "bin\\keytool -import -trustcacerts -keystore \"{{ java_home_windows }}/{{ java_keystore_location }}\" -storepass changeit -noprompt -alias {{ item.alias }} -file \"{{ ansible_env['TMP'] }}/{{ item.file | basename }}\""
@@ -56,8 +56,16 @@
       executable: cmd
       chdir: '{{ java_home_windows }}'
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1
+    when: item.alias not in java_certificates.stdout
 
+  when: ansible_os_family=="Windows"
+
+  always:
+    - name: '[JAVA] cleaning certificates'
+      file: 
+        path="{{ ansible_env['TMP'] }}/{{ item.file | basename }}"
+        state=absent
+      with_items: "{{ certificate_files }}"
         
 #
 # UBUNTU
@@ -77,12 +85,12 @@
       src={{ item.file }}
       dest=/tmp/{{ item.file | basename }}
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1 
+    when: item.alias not in java_certificates.stdout
 
   - name: '[JAVA] install certificates into the Java keystore'
     shell: PATH=$(dirname $(readlink -f $(which java))):$PATH keytool -import -trustcacerts -keystore {{java_installation_path}}/{{java_installation.folder}}/{{java_keystore_location}} -storepass changeit -noprompt -alias {{ item.alias }} -file "/tmp/{{ item.file | basename}}"
     with_items: "{{ certificate_files }}"
-    when: java_certificates.stdout.find("{{ item.alias }}") == -1 
+    when: item.alias not in java_certificates.stdout
 
   when: ansible_distribution=="Ubuntu"
 
