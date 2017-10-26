@@ -20,12 +20,6 @@
     dmg_to_install: "{{ java_installation }}"
   when: (ansible_distribution=="MacOSX") and ('rc' in java_checking_osx) and (java_checking_osx.rc != 0)
 
-#- name: "[JAVA] Installs CMake from DMG"
-#  import_tasks: ../raffienficiaud.atlassian-bambooagent-install-dmg-role/tasks/main.yml
-#  dmg_to_install: "{{ java_installation }}"
-#  when: "{{ cmake_version_output_osx.stdout_lines[0] | regex_replace('cmake version (.*)$', '\\1') | version_compare('%d.%d' % (cmake_installation.version.major, cmake_installation.version.minor), '<') }}"
-
-
 #
 # Windows
 #
