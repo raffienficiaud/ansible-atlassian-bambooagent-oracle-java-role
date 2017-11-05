@@ -24,53 +24,52 @@
 # Windows
 #
 
-# Checks that this version exist, so that there is no need to transfer and install
-- name: '[JAVA] checking existing Java installation'
-  win_command: "java -version"
-  register: java_checking_windows
-  ignore_errors: True
-  when: ansible_os_family=="Windows"
-
 - block:
 
+  # Checks that this version exist, so that there is no need to transfer and install
+  # need hotfix: https://support.microsoft.com/pt-pt/hotfix/kbhotfix?kbnum=2842230&kbln=en-US
+  - name: '[JAVA] checking existing Java installation'
+    win_command: "cmd /c java.exe -version"
+    register: java_checking_windows
+    ignore_errors: True
+  
   - name: '[JAVA] copy and run installer'
     win_copy:
       src: "{{ java_installation.file }}"
-      dest: "{{ansible_env['TEMP']}}/"  
-    when: False
+      dest: "{{ansible_env['TEMP']}}/"
+    when: java_checking_windows|failed
 
   - name: 'Remove log file'
     win_file:
       path: "{{ ansible_env['TEMP'] }}/javasetup.log"
-      state: absent   
+      state: absent
+    when: java_checking_windows|failed
   
   - name: '[JAVA] installation'
-    win_command: "start /w {{java_installation.file | basename }} {{ java_installation.install_options }} /L {{ ansible_env['TEMP'] }}/javasetup.log"
+    win_command: "cmd /C {{java_installation.file | basename }} {{ java_installation.install_options }} /L {{ ansible_env['TEMP'] }}/javasetup.log"
     args:
-      executable: cmd
       chdir: "{{ ansible_env['TEMP'] }}"
-    when: False
+    when: java_checking_windows|failed
+
+  # example: HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft\Java Development Kit\1.8.0_121
+  - win_reg_stat:
+      path: HKLM:\SOFTWARE\JavaSoft\Java Development Kit\1.{{ java_version_major }}
+      name: JavaHome
+    register: java_home_windows
+
+  - name: Ensure that java is present on the PATH
+    win_path:
+      elements:
+      - '{{ java_home_windows.value }}'
+    when: java_home_windows.exists
 
   - name: '[JAVA] check java from prompt'
-    win_command: "java -version"
-    register: java_checking_windows
-    ignore_errors: False
+    win_command: "cmd /C java -version"
+    register: java_checking_windows2
+    ignore_errors: True
   
-  # it seems harder to inspect the installation log
-  #- name: '[JAVA] home location'
-  #  win_lineinfile: 
-  
-  # can be in a separate block if we do not want to install java on some conditions
-  - name: '[JAVA] finding the installation path'
-    win_shell: "(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\JavaSoft\\Java Development Kit\\1.{{ java_version_major }}' -Name JavaHome).JavaHome"
-    register: java_home_windows_tmp
-  
-  # replacing backslashes to forward ones
-  - name: '[JAVA] finding the installation path'
-    set_fact:
-      java_home_windows: '{{ "".join(java_home_windows_tmp.stdout_lines) | replace("\\", "/") }}'
-      
-  when: ansible_os_family=="Windows"
+  when: 
+  - ansible_os_family=="Windows"
 
 #
 # Ubuntu

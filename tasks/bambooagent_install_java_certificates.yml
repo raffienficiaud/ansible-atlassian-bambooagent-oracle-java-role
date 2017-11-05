@@ -37,10 +37,10 @@
 
 - block:
   - name: '[JAVA] list existing certificates'
-    win_shell: "bin\\keytool -list -keystore \"{{ java_home_windows }}/{{ java_keystore_location }}\" -storepass changeit"
+    win_shell: "bin\\keytool -list -keystore \"{{ java_home_windows.value }}/{{ java_keystore_location }}\" -storepass changeit"
     register: java_certificates
     args:
-      chdir: '{{ java_home_windows }}'
+      chdir: '{{ java_home_windows.value }}'
       executable: cmd
 
   - name: '[JAVA] transfer the certificate'
@@ -51,10 +51,10 @@
     when: item.alias not in java_certificates.stdout
 
   - name: '[JAVA] install certificates in the keystore'
-    win_shell: "bin\\keytool -import -trustcacerts -keystore \"{{ java_home_windows }}/{{ java_keystore_location }}\" -storepass changeit -noprompt -alias {{ item.alias }} -file \"{{ ansible_env['TMP'] }}/{{ item.file | basename }}\""
+    win_shell: "bin\\keytool -import -trustcacerts -keystore \"{{ java_home_windows.value }}/{{ java_keystore_location }}\" -storepass changeit -noprompt -alias {{ item.alias }} -file \"{{ ansible_env['TMP'] }}/{{ item.file | basename }}\""
     args:
       executable: cmd
-      chdir: '{{ java_home_windows }}'
+      chdir: '{{ java_home_windows.value }}'
     with_items: "{{ certificate_files }}"
     when: item.alias not in java_certificates.stdout
 
@@ -62,7 +62,7 @@
 
   always:
     - name: '[JAVA] cleaning certificates'
-      file: 
+      win_file: 
         path="{{ ansible_env['TMP'] }}/{{ item.file | basename }}"
         state=absent
       with_items: "{{ certificate_files }}"
