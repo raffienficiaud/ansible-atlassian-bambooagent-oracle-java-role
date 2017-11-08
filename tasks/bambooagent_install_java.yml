@@ -60,10 +60,19 @@
   - name: Ensure that java is present on the PATH
     win_path:
       elements:
-      - '{{ java_home_windows.value }}'
+      - '{{ java_home_windows.value }}\\bin'
     when: java_home_windows.exists
 
-  - name: '[JAVA] check java from prompt'
+  - name: '[JAVA][WIN] adding JAVA_HOME'
+    win_environment:
+      state: present
+      name: JAVA_HOME
+      value: '{{ java_home_windows.value }}'
+      level: machine
+  
+  
+
+  - name: '[JAVA][WIN] check java from prompt'
     win_command: "cmd /C java -version"
     register: java_checking_windows2
     ignore_errors: True
