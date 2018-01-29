@@ -88,14 +88,19 @@
 
   - name: '[JAVA] create destination path'
     file:
-      path={{ java_installation_path }}
-      state=directory
+      path: "{{ java_installation_path }}"
+      state: directory
 
-  - name: '[JAVA] copy and deflate installer'
+  - name: '[JAVA] copy installer'
+    copy:
+      src: "{{ java_installation.file }}"
+      dest: "/tmp/{{ java_installation.file | basename }}"
+
+  - name: '[JAVA] deflate installer'
     unarchive:
-      src="{{ java_installation.file }}"
-      dest="{{ java_installation_path }}"
-      copy=yes
+      src: "/tmp/{{ java_installation.file | basename }}"
+      dest: "{{ java_installation_path }}"
+      remote_src: yes
 
   - name: '[JAVA] update alternatives for java'
     shell: update-alternatives --install "/usr/bin/{{ item }}" "{{ item }}" "{{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}" 1 && \
