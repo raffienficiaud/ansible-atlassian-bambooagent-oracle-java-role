@@ -1,117 +1,15 @@
 # Installs oracle Java on the agent
 ---
 
-#
-# OSX
-#
 
-# Checks that this version exist, so that there is no need to transfer and install
-- name: '[JAVA] checking existing Java installation'
-  command: "/usr/libexec/java_home -v 1.{{ java_version_major }}"
-  register: java_checking_osx
-  ignore_errors: True
-  when: ansible_distribution=="MacOSX"
+- name: "[JAVA] OSX installation tasks"
+  include_tasks: bambooagent_install_java_osx.yml
+  when: ansible_distribution=='MacOSX'
 
-# Impossible to add this into the current meta/dependencies as {{ java_installation }} is not expanded properly
-- name: "[JAVA] Installs Oracle Java from DMG"
-  include_role:
-    name: raffienficiaud.atlassian-bambooagent-install-dmg-role
-  vars:
-    dmg_to_install: "{{ java_installation }}"
-  when: (ansible_distribution=="MacOSX") and ('rc' in java_checking_osx) and (java_checking_osx.rc != 0)
-
-#
-# Windows
-#
-
-- block:
-
-  # Checks that this version exist, so that there is no need to transfer and install
-  # need hotfix: https://support.microsoft.com/pt-pt/hotfix/kbhotfix?kbnum=2842230&kbln=en-US
-  - name: '[JAVA] checking existing Java installation'
-    win_command: "cmd /c java.exe -version"
-    register: java_checking_windows
-    ignore_errors: True
-  
-  - name: '[JAVA] copy and run installer'
-    win_copy:
-      src: "{{ java_installation.file }}"
-      dest: "{{ansible_env['TEMP']}}/"
-    when: java_checking_windows|failed
-
-  - name: 'Remove log file'
-    win_file:
-      path: "{{ ansible_env['TEMP'] }}/javasetup.log"
-      state: absent
-    when: java_checking_windows|failed
-  
-  - name: '[JAVA] installation'
-    win_command: "cmd /C {{java_installation.file | basename }} {{ java_installation.install_options }} /L {{ ansible_env['TEMP'] }}/javasetup.log"
-    args:
-      chdir: "{{ ansible_env['TEMP'] }}"
-    when: java_checking_windows|failed
-
-  # example: HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft\Java Development Kit\1.8.0_121
-  - win_reg_stat:
-      path: HKLM:\SOFTWARE\JavaSoft\Java Development Kit\1.{{ java_version_major }}
-      name: JavaHome
-    register: java_home_windows
-
-  - name: Ensure that java is present on the PATH
-    win_path:
-      elements:
-      - '{{ java_home_windows.value }}\\bin'
-    when: java_home_windows.exists
-
-  - name: '[JAVA][WIN] adding JAVA_HOME'
-    win_environment:
-      state: present
-      name: JAVA_HOME
-      value: '{{ java_home_windows.value }}'
-      level: machine
-  
-  
-
-  - name: '[JAVA][WIN] check java from prompt'
-    win_command: "cmd /C java -version"
-    register: java_checking_windows2
-    ignore_errors: True
-  
-  when: 
-  - ansible_os_family=="Windows"
-
-#
-# Ubuntu
-#
-
-- block:
-
-  - name: '[JAVA] create destination path'
-    file:
-      path: "{{ java_installation_path }}"
-      state: directory
-
-  - name: '[JAVA] copy installer'
-    copy:
-      src: "{{ java_installation.file }}"
-      dest: "/tmp/{{ java_installation.file | basename }}"
-
-  - name: '[JAVA] deflate installer'
-    unarchive:
-      src: "/tmp/{{ java_installation.file | basename }}"
-      dest: "{{ java_installation_path }}"
-      remote_src: yes
-
-  - name: '[JAVA] update alternatives for java'
-    shell: update-alternatives --install "/usr/bin/{{ item }}" "{{ item }}" "{{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}" 1 && \
-             chmod a+x /usr/bin/{{ item }} && \
-             update-alternatives --set {{ item }} {{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}
-    with_items:
-      - "java"
-      - "javac"
-      - "javaws"
-
-  - name: '[JAVA] check java'
-    command: java -version
-
+- name: "[JAVA] Ubuntu installation tasks"
+  include_tasks: bambooagent_install_java_linux.yml
   when: ansible_distribution=="Ubuntu"
+
+- name: "[JAVA] Windows installation tasks"
+  include_tasks: bambooagent_install_java_win.yml
+  when: ansible_os_family=="Windows"
