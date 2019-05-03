@@ -1,0 +1,51 @@
+#
+# OSX
+#
+
+# Checks that this version exist, so that there is no need to transfer and install
+- name: '[JAVA] checking existing Java installation'
+  command: "/usr/libexec/java_home -v 1.{{ java_version_minor }}"
+  register: java_checking_osx
+  ignore_errors: True
+  when: ansible_distribution=="MacOSX"
+
+# Impossible to add this into the current meta/dependencies as {{ java_installation }} is not expanded properly
+- name: "[JAVA] Installs Oracle Java from DMG"
+  include_role:
+    name: atlassian-bambooagent-install-dmg-role
+    tasks_from: main
+  vars:
+    dmg_to_install: "{{ java_installation }}"
+  when:
+   - ansible_distribution=="MacOSX"
+   - 'rc' in java_checking_osx
+   - java_checking_osx.rc != 0
+
+
+# installing the certificate
+- block:
+
+  - name: '[JAVA] list existing certificates'
+    shell: keytool -list -keystore `/usr/libexec/java_home`/{{ java_keystore_location }} -storepass changeit
+    register: java_certificates
+
+  - name: '[JAVA] transfer the certificate'
+    copy:
+      src={{ item.file }}
+      dest=/tmp/{{ item.file | basename }}
+    with_items: "{{ certificate_files }}"
+    when: item.alias not in java_certificates.stdout
+
+  - name: '[JAVA] install certificates in the keystore'
+    shell: keytool -import -trustcacerts -keystore `/usr/libexec/java_home`/{{ java_keystore_location }} -storepass changeit -noprompt -alias {{ item.alias }} -file "/tmp/{{ item.file | basename }}"
+    with_items: "{{ certificate_files }}"
+    when: item.alias not in java_certificates.stdout
+
+  when: ansible_distribution=="MacOSX"
+
+  always:
+    - name: '[JAVA] cleaning certificates'
+      file:
+        path="/tmp/{{ item.file | basename }}"
+        state=absent
+      with_items: "{{ certificate_files }}"

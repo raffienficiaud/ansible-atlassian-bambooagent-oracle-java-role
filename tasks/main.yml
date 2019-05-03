@@ -1,16 +1,12 @@
 ---
 
-# This file configures the bamboo agent  
+# This file configures the bamboo agent
 
-- include_tasks: check_vars.yml 
+- include_tasks: check_vars.yml
   tags:
     - java:checks
     - checks
 
 - include_tasks: bambooagent_install_java.yml
-  tags:
-    - java
-    
-- include_tasks: bambooagent_install_java_certificates.yml
   tags:
     - java

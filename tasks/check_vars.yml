@@ -7,14 +7,14 @@
   when: item is undefined
   with_items:
     - java_version_major
+    - java_version_minor
     - java_version_update
-    
+
     # Indicates the relative path of the Java keystore
     - java_keystore_location
-    
+
     # this one may be optional if the bamboo agent is not using https
     - certificate_files
-    
+
     # This contains the definitions for various operating systems
     - java_installation
-    

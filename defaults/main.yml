@@ -10,3 +10,6 @@ java_installation_path: /usr/local/oracle
 
 # Keystore location: this may be different whether you install the JRE or the JDK. This path is relative to JAVA_HOME
 java_keystore_location: jre/lib/security/cacerts
+
+# The major version of Java
+java_version_major: 1
