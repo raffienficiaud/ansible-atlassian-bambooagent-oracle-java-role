@@ -3,7 +3,7 @@ Ansible Atlassian Bambooagent Oracle Java role
 
 Installs an Oracle Java and certificates to its keystore on a remote machine and from a file installer.
 This role can be used prior to deploying an agent running Atlassian Bamboo or any other Java service.
-It is available on *Windows, OSX, Ubuntu*
+It is available on *Windows, OSX, Ubuntu*.
 
 On Linux, the
 installed Java becomes the default Java and the Java *alternatives* are updated.
@@ -50,27 +50,27 @@ local_java_installation:
   file: jdk-{{java_version_minor}}u{{java_version_update}}-macosx-x64.dmg
 
   # the install command of the DMG role
-  install_cmd: 'installer -dumplog -pkg "${mount}/JDK {{java_version_minor}} Update {{java_version_update}}.pkg" -target /'
+  install_cmd: 'installer -dumplog -pkg "${mount}/JDK {{ java_version_minor }} Update {{ java_version_update }}.pkg" -target /'
 
   remove_interactive: False
 ```
 
-On Linux:
+On Windows:
 ```
 local_java_installation:
   # Java installer
-  file: "/jdk-{{java_version_minor}}u{{java_version_update}}-windows-x64.exe"
+  file: "jdk-{{ java_version_minor }}u{{ java_version_update }}-windows-x64.exe"
 
   # Additional options (string) to pass to the installer
   install_options: ""
 ```
 
-On Windows:
+On Linux:
 
 ```
 local_java_installation:
   # Archive containing the Java installer
-  file: "jdk-{{java_version_minor}}u{{java_version_update}}-linux-x64.tar.gz"
+  file: "jdk-{{ java_version_minor }}u{{ java_version_update }}-linux-x64.tar.gz"
 ```
 
 
