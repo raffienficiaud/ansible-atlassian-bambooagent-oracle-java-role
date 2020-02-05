@@ -3,9 +3,10 @@
 #
 
 - name: '[JAVA] Checking that required variables are set'
-  fail: msg="{{ item }} is not defined"
+  fail:
+    msg: "{{ item }} is not defined"
   when: item is undefined
-  with_items:
+  loop:
     - java_version_major
     - java_version_minor
     - java_version_update

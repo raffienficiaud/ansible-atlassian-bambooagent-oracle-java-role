@@ -21,10 +21,11 @@
       remote_src: yes
 
   - name: '[JAVA] update alternatives for java'
-    shell: update-alternatives --install "/usr/bin/{{ item }}" "{{ item }}" "{{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}" 1 && \
-             chmod a+x /usr/bin/{{ item }} && \
-             update-alternatives --set {{ item }} {{java_installation_path}}/{{java_installation.folder}}/bin/{{ item }}
-    with_items:
+    shell: |
+      update-alternatives --install "/usr/bin/{{ item }}" "{{ item }}" "{{ java_installation_path }}/{{ java_installation.folder }}/bin/{{ item }}" 1
+      chmod a+x /usr/bin/{{ item }}
+      update-alternatives --set {{ item }} {{ java_installation_path }}/{{ java_installation.folder }}/bin/{{ item }}
+    loop:
       - "java"
       - "javac"
       - "javaws"
@@ -34,11 +35,11 @@
 
   - name: Advertising the JAVA_HOME and JAVA_BIN
     set_fact:
-      JAVA_HOME: "{{java_installation_path}}/{{java_installation.folder}}"
-      JAVA_BIN: "{{java_installation_path}}/{{java_installation.folder}}/bin/java"
+      JAVA_HOME: "{{ java_installation_path }}/{{ java_installation.folder }}"
+      JAVA_BIN: "{{ java_installation_path }}/{{ java_installation.folder }}/bin/java"
       cacheable: true
 
-  when: ansible_distribution=="Ubuntu"
+  when: ansible_distribution == "Ubuntu"
 
 # Installing the certificate
 - block:
@@ -47,19 +48,24 @@
     shell: PATH=$(dirname $(readlink -f $(which java))):$PATH keytool -help
 
   - name: '[JAVA] list existing certificates'
-    shell: PATH=$(dirname $(readlink -f $(which java))):$PATH keytool -list -keystore {{java_installation_path}}/{{java_installation.folder}}/{{java_keystore_location}} -storepass changeit
+    shell: >
+      PATH=$(dirname $(readlink -f $(which java))):$PATH
+      keytool -list -keystore {{ java_installation_path }}/{{ java_installation.folder }}/{{ java_keystore_location }} -storepass changeit
     register: java_certificates
 
   - name: '[JAVA] transfer the certificate'
     copy:
       src={{ item.file }}
       dest=/tmp/{{ item.file | basename }}
-    with_items: "{{ certificate_files }}"
+    loop: "{{ certificate_files }}"
     when: item.alias not in java_certificates.stdout
 
   - name: '[JAVA] install certificates into the Java keystore'
-    shell: PATH=$(dirname $(readlink -f $(which java))):$PATH keytool -import -trustcacerts -keystore {{java_installation_path}}/{{java_installation.folder}}/{{java_keystore_location}} -storepass changeit -noprompt -alias {{ item.alias }} -file "/tmp/{{ item.file | basename}}"
-    with_items: "{{ certificate_files }}"
+    shell: >
+      PATH=$(dirname $(readlink -f $(which java))):$PATH
+      keytool -import -trustcacerts -keystore {{ java_installation_path }}/{{ java_installation.folder }}/{{ java_keystore_location }}
+      -storepass changeit -noprompt -alias {{ item.alias }} -file "/tmp/{{ item.file | basename }}"
+    loop: "{{ certificate_files }}"
     when: item.alias not in java_certificates.stdout
 
   when: ansible_distribution=="Ubuntu"
@@ -67,6 +73,6 @@
   always:
     - name: '[JAVA] cleaning certificates'
       file:
-        path="/tmp/{{ item.file | basename }}"
-        state=absent
-      with_items: "{{ certificate_files }}"
+        path: "/tmp/{{ item.file | basename }}"
+        state: absent
+      loop: "{{ certificate_files }}"

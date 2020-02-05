@@ -2,61 +2,66 @@
 # Windows
 #
 
+# pattern
+# HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft\Java Development Kit\1.8.0_121
+- name: '[JAVA][WIN] check if installation already exists'
+  win_reg_stat:
+    path: HKLM:\SOFTWARE\JavaSoft\Java Development Kit\{{ java_version_major }}.{{ java_version_minor }}.0_{{ java_version_update }}
+    name: JavaHome
+  register: java_checking_windows
+
+
 - block:
-
-  # Checks that this version exist, so that there is no need to transfer and install
-  # need hotfix: https://support.microsoft.com/pt-pt/hotfix/kbhotfix?kbnum=2842230&kbln=en-US
-  - name: '[JAVA] checking existing Java installation'
-    win_command: "cmd /c java.exe -version"
-    register: java_checking_windows
-    ignore_errors: True
-
-  - name: '[JAVA] copy and run installer'
+  - name: '[JAVA] copy the installer'
     win_copy:
       src: "{{ java_installation.file }}"
-      dest: "{{ansible_env['TEMP']}}/"
-    when: java_checking_windows is failed
+      dest: "{{ ansible_env['TEMP'] }}/"
 
-  - name: 'Remove log file'
+  - name: '[JAVA] Remove log file'
     win_file:
-      path: "{{ ansible_env['TEMP'] }}/javasetup.log"
+      path: "{{ ansible_env['TEMP'] }}\\javasetup.log"
       state: absent
-    when: java_checking_windows is failed
 
-  - name: '[JAVA] installation'
-    win_command: "cmd /C {{java_installation.file | basename }} {{ java_installation.install_options | default('') }} /L {{ ansible_env['TEMP'] }}/javasetup.log"
+  - name: '[JAVA] run installation'
+    win_shell: >
+      {{ java_installation.file | basename }} {{ java_installation.install_options | default("") }}
+      /L {{ ansible_env['TEMP'] }}\javasetup.log
     args:
       chdir: "{{ ansible_env['TEMP'] }}"
-    when: java_checking_windows is failed
+      executable: cmd
 
   # example: HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft\Java Development Kit\1.8.0_121
-  - win_reg_stat:
-      path: HKLM:\SOFTWARE\JavaSoft\Java Development Kit\{{ java_version_major }}.{{ java_version_minor }}
-      name: JavaHome
-    register: java_home_windows
-
-  - name: Ensure that java is present on the PATH
-    win_path:
-      elements:
-      - '{{ java_home_windows.value }}\\bin'
-    when: java_home_windows.exists
-
-  - name: '[JAVA][WIN] adding JAVA_HOME'
-    win_environment:
-      state: present
-      name: JAVA_HOME
-      value: '{{ java_home_windows.value }}'
-      level: machine
-
-
-
-  - name: '[JAVA][WIN] check java from prompt'
-    win_command: "cmd /C java -version"
-    register: java_checking_windows2
-    ignore_errors: True
-
   when:
-  - ansible_os_family=="Windows"
+    - ansible_os_family == "Windows"
+    - java_checking_windows is failed or not java_checking_windows.exists
+
+# end block installation
+
+# populating JAVA_HOME and related variables
+- name: '[JAVA] extracts JAVA_HOME'
+  win_reg_stat:
+    path: HKLM:\SOFTWARE\JavaSoft\Java Development Kit\{{ java_version_major }}.{{ java_version_minor }}
+    name: JavaHome
+  register: java_home_windows
+
+- name: '[JAVA] adds JAVA_HOME to PATH'
+  win_path:
+    elements:
+      - '%JAVA_HOME%'
+      - '%JAVA_HOME%\bin'
+  when: java_home_windows.exists
+
+- name: '[JAVA][WIN] adding JAVA_HOME to the environment'
+  win_environment:
+    state: present
+    name: JAVA_HOME
+    value: '{{ java_home_windows.value }}'
+    level: machine
+
+- name: '[JAVA][WIN] check java from prompt'
+  win_command: "cmd /C java -version"
+  register: java_checking_windows2
+  ignore_errors: True
 
 
 # Installing the certificate
@@ -70,24 +75,33 @@
 
   - name: '[JAVA] transfer the certificate'
     win_copy:
-      src={{ item.file }}
-      dest="{{ ansible_env['TMP'] }}/{{ item.file | basename }}"
-    with_items: "{{ certificate_files }}"
+      src: "{{ item.file }}"
+      dest: "{{ ansible_env['TMP'] }}/{{ item.file | win_basename }}"
+    loop: "{{ certificate_files }}"
     when: item.alias not in java_certificates.stdout
 
+  # things should be aligned to bin\\keytool: any indentation on the other lines will break
+  # the command
   - name: '[JAVA] install certificates in the keystore'
-    win_shell: "bin\\keytool -import -trustcacerts -keystore \"{{ java_home_windows.value }}/{{ java_keystore_location }}\" -storepass changeit -noprompt -alias {{ item.alias }} -file \"{{ ansible_env['TMP'] }}/{{ item.file | basename }}\""
+    win_shell: >
+      bin\\keytool
+      -import -trustcacerts
+      -keystore "{{ java_home_windows.value }}\\{{ java_keystore_location }}"
+      -storepass changeit
+      -noprompt
+      -alias {{ item.alias }}
+      -file "{{ ansible_env['TMP'] }}\\{{ item.file | win_basename }}"
     args:
       executable: cmd
       chdir: '{{ java_home_windows.value }}'
-    with_items: "{{ certificate_files }}"
+    loop: "{{ certificate_files }}"
     when: item.alias not in java_certificates.stdout
 
-  when: ansible_os_family=="Windows"
+  when: ansible_os_family == "Windows"
 
   always:
     - name: '[JAVA] cleaning certificates'
       win_file:
-        path="{{ ansible_env['TMP'] }}/{{ item.file | basename }}"
-        state=absent
-      with_items: "{{ certificate_files }}"
+        path: "{{ ansible_env['TMP'] }}/{{ item.file | win_basename }}"
+        state: absent
+      loop: "{{ certificate_files }}"
